@@ -1,0 +1,139 @@
+body, html {
+  height: 100%;
+  margin: 0px;
+  font: 400 15px/1.8 "Lato", sans-serif;
+  padding: 8px 0px;
+}
+
+.mainimg-1, .mainimg-2 {
+  position: relative;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+
+}
+.mainimg-1 {
+  background-image: url("http://cs-server.usc.edu:45678/hw/hw3/images/image6.jpg");
+  min-height: 65%;
+}
+
+.mainimg-2 {
+  background-image: url("http://cs-server.usc.edu:45678/hw/hw3/images/image5.jpg");
+  min-height: 400px;
+}
+.header{
+	display:block;
+	color: #bc9b5d;
+	font-size: 56px;
+	text-align: center;
+	letter-spacing: 10px;
+	font-weight: normal;
+	margin-top: -48px;
+	padding: 0;
+	vertical-align: top;
+}
+.header br {
+    display: none;
+}
+.container{
+	padding-right:96px;
+	padding-left:96px;
+	margin-right:auto;
+	margin-left:auto;
+	position:relative;
+}
+.black-text{
+	color:black;
+	line-height:150%;
+	text-align: justify;
+}
+
+hr {
+    margin-left: auto;
+    margin-right: auto;
+    border-width: 1px 1px 1px 0;
+	color: #e0e0e0;
+}
+.nav{
+    border:1px solid #ccc;
+    border-width:1px 0 0 0;
+    list-style:none;
+    margin:0;
+    padding:0;
+    text-align:center;
+}
+.nav li{
+    display:inline;
+}
+.nav a{
+    display:inline-block;
+    padding:10px;
+	color: black;
+	text-decoration: none;
+	margin: 0 32px 0 32px;
+	font-size: 17px;
+}
+.nav a:hover {
+  color: #bc9b5d;
+}
+
+.nav a.active {
+  color: #bc9b5d;
+}
+#wrapper{
+	width: 50%;
+	display: inline;
+	float: left;
+	background-color:red;
+}
+#left-child{
+	padding:0px 24px 0 0;
+	text-align: right;
+	background-color:yellow;
+}
+#right-child{
+	padding:0px 0 0 24px;
+}
+.min-header, review{
+	font-size: 32px;
+	font-family: "New Century Schoolbook Greek Inclined";
+	font-style: italic;
+	color: #bc9b5d;
+	line-height: 100%;
+	font-weight: bold;
+}
+review:before {
+    content: open-quote;
+}
+ 
+review:after {
+    content: close-quote;
+}
+.con{
+	overflow: hidden;
+}
+.col {
+  flex: 1;
+  padding: 1em;
+}
+.order {
+	margin-top: 44px;
+  padding: 0;
+  border: 1px solid black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: purple;
+  width: 100%;
+}
+.order img {
+    display: block;
+    position: relative;
+	padding: 16px 0;
+}
+.order button {
+   position:absolute;
+  height: 20px;
+  width: 100px;
+}
