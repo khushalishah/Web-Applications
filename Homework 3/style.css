@@ -1,35 +1,62 @@
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: italic;
+  font-weight: 400;
+  src: local("Libre Baskerville Italic"), local("LibreBaskerville-Italic"), url("https://fonts.gstatic.com/s/librebaskerville/v5/QHIOz1iKF3bIEzRdDFaf5eUHi-3yDrzgLLsrfaKVF9k.woff2") format("woff2");
+  unicode-range: U+0-FF, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2212, U+2215;
+}
+
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: normal;
+  font-weight: 400;
+  src: local("Libre Baskerville"), local("LibreBaskerville-Regular"), url("https://fonts.gstatic.com/s/librebaskerville/v5/pR0sBQVcY0JZc_ciXjFsK6Ucnt8gjcHpqyffjHeZWDA.woff2") format("woff2");
+  unicode-range: U+0-FF, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2212, U+2215;
+}
+
 body, html {
   height: 100%;
   margin: 0px;
   font: 400 15px/1.8 "Lato", sans-serif;
-  padding: 8px 0px;
+  padding: 0px 0px;
+}
+
+.site-container{
+	width:1060px;
 }
 
 .mainimg-1, .mainimg-2 {
   position: relative;
   background-attachment: fixed;
-  background-position: center;
   background-repeat: no-repeat;
-  background-size: cover;
-
 }
 .mainimg-1 {
-  background-image: url("http://cs-server.usc.edu:45678/hw/hw3/images/image6.jpg");
-  min-height: 65%;
+  width:1060px;
+  height:550px;
+  max-width: 100%;
+  background-position: -320px 0px; 
+  background-size: 1700px;
+  overflow:hidden;
+  background-image:url('http://cs-server.usc.edu:45678/hw/hw3/images/image6.jpg');
+  clip-path:inset(10px,10px,10px,10px);
 }
 
 .mainimg-2 {
   background-image: url("http://cs-server.usc.edu:45678/hw/hw3/images/image5.jpg");
-  min-height: 400px;
+  min-height: 500px;
+  background-position: 0 50%;
+  background-size: 1060px;
+  width:100%;
 }
 .header{
 	display:block;
 	color: #bc9b5d;
-	font-size: 56px;
+	font-size: 52px;
 	text-align: center;
 	letter-spacing: 10px;
 	font-weight: normal;
-	margin-top: -48px;
+	margin-top: -42px;
+	margin-bottom: 28px;
 	padding: 0;
 	vertical-align: top;
 }
@@ -38,15 +65,25 @@ body, html {
 }
 .container{
 	padding-right:96px;
-	padding-left:96px;
+	padding-left:120px;
 	margin-right:auto;
 	margin-left:auto;
 	position:relative;
+	overflow:hidden;
 }
+
 .black-text{
 	color:black;
 	line-height:150%;
 	text-align: justify;
+	font-family: helvetica;
+}
+.gray-text{
+	color:#5a5962;
+	line-height:150%;
+	font-family: helvetica;
+	font-size: 15px;
+	font-weight:500;
 }
 
 hr {
@@ -68,15 +105,15 @@ hr {
 }
 .nav a{
     display:inline-block;
-    padding:10px;
+    padding:8px 8px 4px 8px;
 	color: black;
 	text-decoration: none;
 	margin: 0 32px 0 32px;
-	font-size: 17px;
+	font-size: 15px;
 }
-.nav a:hover {
+/*.nav a:hover {
   color: #bc9b5d;
-}
+}*/
 
 .nav a.active {
   color: #bc9b5d;
@@ -85,46 +122,32 @@ hr {
 	width: 50%;
 	display: inline;
 	float: left;
-	background-color:red;
 }
 #left-child{
-	padding:0px 24px 0 0;
+	padding:0px 20px 0 0;
 	text-align: right;
-	background-color:yellow;
 }
 #right-child{
-	padding:0px 0 0 24px;
+	padding:0px 0 0 20px;
 }
 .min-header, review{
-	font-size: 32px;
-	font-family: "New Century Schoolbook Greek Inclined";
-	font-style: italic;
+	font: italic normal normal 30px/1.4em 'libre baskerville',serif;
 	color: #bc9b5d;
-	line-height: 100%;
-	font-weight: bold;
+	padding: 4px 0;
+	line-height:120%;
 }
+
 review:before {
     content: open-quote;
 }
- 
 review:after {
     content: close-quote;
 }
-.con{
-	overflow: hidden;
-}
-.col {
-  flex: 1;
-  padding: 1em;
-}
 .order {
-	margin-top: 44px;
-  padding: 0;
-  border: 1px solid black;
+  padding: 20px 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: purple;
   width: 100%;
 }
 .order img {
@@ -132,8 +155,56 @@ review:after {
     position: relative;
 	padding: 16px 0;
 }
-.order button {
-   position:absolute;
-  height: 20px;
-  width: 100px;
+#order-button-parent {
+	display: table;
+	position:absolute;
+}
+#order-button-child {
+	height: 130px;
+	width: 350px;
+  position:relative;
+  text-decoration: none;
+  cursor:pointer;
+  display: table-cell;
+  vertical-align: middle;
+  background-color:white;
+	border: 0px solid #fff;
+}
+
+#button-text{
+		font-family:'Libre Baskerville';
+		font-size: 26px;
+		color: #4d4d4d;
+		text-align:center;
+		font-weight:500;
+		cursor:pointer;
+		text-decoration:none;
+}
+#button-text:hover 
+{
+    color:#BDBDBD;
+	visibility:visible;
+}
+#button-subtext{
+	font-family:helvetica;
+	font-size: 10px;
+	color: #424242;
+	text-align:center;
+	letter-spacing: 0.15em;
+}
+a.read-more {
+    color: #000000;
+    text-decoration: none;
+	display:inline-block;
+	margin-top:8px;
+}
+
+a.read-more:hover 
+{
+     color:#757575; 
+     text-decoration:none;  
+}
+#middle-part{
+	text-align:center;
+	margin-top:16px;
 }
