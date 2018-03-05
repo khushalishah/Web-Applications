@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-<html>
 <?php 
 	if(isset($_POST["search"])){
 		if(isset($_POST["location"]) && $_POST["location"] != ""){
@@ -16,9 +14,11 @@
 		$url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location='.$lattitude.','.$longitude.'&radius='.$_POST['distance'].'&types='.$_POST['category'].'&keyword='.$_POST['keyword'].'&key=AIzaSyBcrBxlXi_PvW591GLcKs4St2gkJK_V4I0'; // path to your JSON file
 		//echo $url;
 		$data = file_get_contents($url);
-		echo $data;
-		die("");
+		echo json_encode($data);
+		die();
 	}else{?>
+<!DOCTYPE html>
+<html>
 <head>
 <title></title>
 <style>
@@ -44,9 +44,9 @@ table.data,table.data th,table.data td {
 var lattitude=0;
 var longitude = 0;
 
-var getJSON = function(url, callback,isAsync = true) {
+var getJSON = function(url, callback,isAsync = true,method = 'GET',params = "") {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, isAsync);
+    xhr.open(method, url, isAsync);
     //xhr.responseType = 'json';
     xhr.onload = function() {
       var status = xhr.status;
@@ -59,7 +59,7 @@ var getJSON = function(url, callback,isAsync = true) {
 	xhr.error = function(e) {
             alert("There is some kind of error ");
     };
-    xhr.send();
+    xhr.send(params);
 };
 
 function radioButtonSelected() {
@@ -86,6 +86,7 @@ function getLocation(){
 					input.setAttribute("type", "hidden");
 					input.setAttribute("name", "lattitude");
 					input.setAttribute("value", lattitude);
+					input.setAttribute("id","lattitude");
 					//append to form element that you want .
 					document.getElementById("travelform").appendChild(input);
 					
@@ -93,6 +94,7 @@ function getLocation(){
 					input.setAttribute("type", "hidden");
 					input.setAttribute("name", "longitude");
 					input.setAttribute("value", longitude);
+					input.setAttribute("id","longitude");
 					//append to form element that you want .
 					document.getElementById("travelform").appendChild(input);
 
@@ -103,12 +105,19 @@ function getLocation(){
 	});
 }
 
+function searchClicked(event){
+	event.preventDefault();
+	if(document.getElementById('travelform').checkValidity()){
+		if(validate()){
+			getResultData();
+		}
+	}
+}
+
 function validate(){
 	var dist = document.getElementById('distance').value;
-	if(document.getElementById('travelform').checkValidity()){
 	if(dist == ''){
 		document.getElementById('distance').value = 10;
-		getResultData();
 		return true;
 	}else{
 		if(/^\d+$/.test(dist)){
@@ -117,26 +126,64 @@ function validate(){
 				return false;
 			}
 			//get json data
-			getResultData();
 			return true;
 		}else{
 			alert('Distance should be a positive number');
 			return false;
 		}
 	}
-	}
+}
+
+function parseJSONData(data){
+		var res = JSON.stringify(data);
+		var json = JSON.parse(data);
+		document.getElementById('result').innerHTML = json;
+		if(json.results.length==0){
+			var html = "<p>No records have been found</p>";
+		}else{
+			var html = "<table style=\"text-align:left; width:100%; margin:16px auto;\" class=\"data\" cellpadding=\"10\"><tr><th>Category</th><th>Name</th><th>Address</th></tr>";
+			for(i=0;i<json.results.length;i++){
+				var result = json.results[0];
+				html += "<tr><td><img src=\""+result.icon+"\" style=\"width:35px; height:35px;\"/></td><td><a href=\""+result.id+"\">"+result.name+"</a></td><td>"+result.vicinity+"</td></tr>";
+			}
+			html += "</table>";
+		}
+		document.getElementById('result').innerHTML = html;
 }
 
 function getResultData(){
-	getJSON('places.php',function(err, data) {
-		//alert('hi');
-		if (err !== null) {
-				alert('Something went wrong: ' + err);
-			} else {
-				//alert('hi');
-				alert(data);
-			}
-	},false);
+	var params = "keyword="+document.getElementById('keyword').value;
+	params += "&lattitude="+document.getElementById('lattitude').value;
+	params += "&longitude="+document.getElementById('longitude').value;
+	params += "&location="+document.getElementById('txtlocation').value;
+	params += "&distance="+document.getElementById('distance').value;
+	var e = document.getElementById("category");
+	var category = e.options[e.selectedIndex].text;
+	params += "&category="+category;
+	var req;
+    if (window.XMLHttpRequest) {
+        req = new XMLHttpRequest();
+        } else if (window.ActiveXObject) {
+        req = new ActiveXObject("Microsoft.XMLHTTP");
+        }
+    if (req != undefined) {
+        try {
+            req.open("POST", 'places.php', false);
+			req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            }
+        catch(err) {
+            alert(err.message);
+            }
+        req.send(params); // param string only used for POST
+
+        if (req.readyState == 4) { // only if req is "loaded"
+            if (req.status == 200)  // only if "OK"
+                { 
+				parseJSONData(req.responseText);
+				}
+            else    { alert("XHR error: " + req.status +" "+req.statusText); }
+            }
+        }
 } 
 
 function clearFields(){
@@ -147,15 +194,15 @@ function clearFields(){
 	document.getElementById('location').checked = false;
 	document.getElementById('category').selectedIndex = 0;
 	document.getElementById("txtlocation").setAttribute('disabled', true);
+	document.getElementById('result').innerHTML = "";
 }
 </script>
 </head>
-
 <body style="text-align:center;" onLoad="getLocation()">
 <div style="padding:0px 8px; background-color:#F5F5F5; width:600px; border:3px solid #E0E0E0; margin:0 auto;">
 <div id="header">Travel and Entertainment Search</div>
 <hr/>
-<form style="text-align:left" method="POST" action="" id="travelform">
+<form style="text-align:left" method="POST" id="travelform">
 <label class="tag">Keyword <input type="text" id="keyword" name="keyword" value="<?php if(isset($_POST['keyword']))echo $_POST['keyword'];?>" required/></label>
 <label class="tag">Category <select name="category" id="category">
 			<option selected="selected">default</option>
@@ -189,32 +236,11 @@ from <table style="display:inline; vertical-align: top;"><tr><td><input id="here
 	  document.getElementById("txtlocation").removeAttribute('disabled');
   }
 </script>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input id="btnSearch" type="Submit" value="Search" name="search" onClick="return validate()" disabled/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input id="btnSearch" type="Submit" value="Search" name="search" onClick="searchClicked(event)" disabled/>
 <input type="button" value="Clear" onClick="clearFields()"/><br/><br/>
 </form>
 </div>
-<div id="result" style="width:80%;"></div>
-		
-
-<!--<script type="text/javascript">
-		alert('Hieeee');
-		var data = "<?php echo $data;?>";
-		var json = JSON.parse(data);
-		if(json.results.length==0){
-			var html = "<p>No records have been found</p>";
-		}else{
-			var html = "<table style=\"text-align:left; width:100%; margin:16px auto;\" class=\"data\" cellpadding=\"10\"><tr><th>Category</th><th>Name</th><th>Address</th></tr>";
-			for(i=0;i<json.results.length;i++){
-				var result = json.results[0];
-				html += "<tr><td><img src=\""+result.icon+"\" style=\"width:35px; height:35px;\"/></td><td>"+result.name+"</td><td>"+result.vicinity+"</td></tr>";
-			}
-			html += "</table>";
-		}
-		document.getElementById('result').innerHTML = html;
-		
-</script> 
-<p>Form Submitted</p>-->
-	<?php } ?>
-
+<div id="result" style="width:80%; text-align:center; display:inline-block;"></div>
 </body>
 </html>
+<?php } ?>
