@@ -1,4 +1,7 @@
 Lectures/
+Homework 8/node_modules/
+package-lock.json
 *.tar
 *.conf
 *.log
+*.zip

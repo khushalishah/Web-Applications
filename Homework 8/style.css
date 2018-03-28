@@ -1,0 +1,44 @@
+.col-centered{
+    float: none;
+    margin: 0 auto;
+	text-align:center;
+}
+.form-horizontal .control-label.text-left{
+    text-align: left;
+}
+.control-label{
+	font-weight:400;
+}
+
+.center-pills { display: inline-block; }
+
+td{
+	text-align:left;
+	vertical-align:middle;
+}
+.table > tbody > tr > td {
+     vertical-align: middle;
+}
+
+.row-selected{
+	background-color:#FFF176;
+}
+
+.right-align{
+	text-align:right;
+	display:inline-block;
+}
+.glyphicon-star {
+   color: #FDD835;
+}
+.alert {
+  margin-bottom: 1px;
+  height: 30px;
+  line-height:30px;
+  padding:0px 15px;
+}
+.btn-pagination{
+	margin:8px;
+	width: 80px;
+}
+
