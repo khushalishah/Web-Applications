@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/constraintLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TableRow android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView android:text="Address"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_marginLeft="8dp"
+                android:id="@+id/tv_address"
+                tools:text="947 W 30th Street, Los Angles CA 90007"/>
+
+        </TableRow>
+
+        <TableRow android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView android:text="Phone Number"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_marginLeft="8dp"
+                android:id="@+id/tv_phone_no"
+                tools:text="+1 323 723 6676"
+                android:autoLink="phone"/>
+
+        </TableRow>
+
+        <TableRow android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView android:text="Price Level"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_price_level"
+                android:layout_marginLeft="8dp"
+                tools:text="$$"/>
+
+        </TableRow>
+
+        <TableRow android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView android:text="Rating"
+                android:textStyle="bold" />
+
+            <LinearLayout android:layout_height="wrap_content"
+                android:layout_width="match_parent">
+
+            <RatingBar
+                android:id="@+id/rating"
+                style="@style/smallRatingBar"
+                android:layout_width="wrap_content"
+                android:layout_height="16dp"
+                tools:numStars="5"
+                tools:rating="2"
+                android:stepSize="0.1"/>
+            </LinearLayout>
+        </TableRow>
+
+        <TableRow android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView android:text="Google Page"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_google_url"
+                android:layout_marginLeft="8dp"
+                tools:text="google page url"
+                android:autoLink="web"/>
+
+        </TableRow>
+
+        <TableRow android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView android:text="Website"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_web_url"
+                android:layout_marginLeft="8dp"
+                tools:text="page url"
+                android:autoLink="web"/>
+
+        </TableRow>
+
+
+    </TableLayout>
+
+
+
+</LinearLayout>
