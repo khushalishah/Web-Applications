@@ -1,13 +1,20 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="website">
 <head>
 <title>Places</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/rateYo/2.3.2/jquery.rateyo.min.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.17.0/jquery.validate.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular-animate.js"></script>
+	<script type="text/javascript" src="angular.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.0/moment.min.js"></script>
+	<script type="text/javascript" async src="https://platform.twitter.com/widgets.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/rateYo/2.3.2/jquery.rateyo.min.js"></script>
   <link rel="stylesheet" href="style.css">
   <script>
   var lattitude = 0;
@@ -17,6 +24,14 @@
   var prevURL = [];
   var pageNo = 0;
   var map;
+  var favoritesData = [];
+  var selectedRow = -1;
+  var mapLat = 0;
+  var mapLng = 0;
+  var mapToggle = true;
+  var googleReviewsData = null;
+  var yelpParams = "";
+  var resultsTab = true;
 
   //code to fetch lattitude and longitude
   $(document).ready(function(){
@@ -42,6 +57,8 @@
 					document.getElementById("travel-form").appendChild(input);
 
 					document.getElementById("btn_search").removeAttribute('disabled');
+					
+					setFavoritesData();
 				}
 
     });
@@ -52,6 +69,7 @@
     $("#rbt_clocation, #rbt_olocation").change(function(){
         if($("#rbt_clocation").is(":checked")){
             $("#txt_location").attr("disabled",true);
+			$('input[name="location"]').val('');
         }
         else if($("#rbt_olocation").is(":checked")){
             $("#txt_location").removeAttr("disabled");
@@ -67,12 +85,19 @@ $.validator.setDefaults( {
 				$('input[name="distance"]').val('10');
 			}
 				$.ajax({
-        url: 'http://localhost/',
+        url: 'http://travelentertainment-env.us-east-2.elasticbeanstalk.com/',
         type: 'get',
         dataType: 'json',
         data: $('#travel-form').serialize(),
 		beforeSend: function() {
-        showProgressBar();
+		$('a[href="#results"]').tab('show');
+		$('.details').html('');
+		var scope = angular.element(document.getElementById("mainBody")).scope();
+		scope.view = "search";
+		scope.$apply();
+		$('#results').html("");
+		selectedRow = -1;
+        showProgressBar('results');
 		},
         success: function(data) {
                    placesData = data;
@@ -81,21 +106,25 @@ $.validator.setDefaults( {
 				   showResults();
 				},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
-			alert("Excpetion " + errorThrown + XMLHttpRequest);
+			//alert("Excpetion " + errorThrown + XMLHttpRequest);
 			//add error message red colored message
+			var html = "<div class=\"alert alert-danger text-left\" role=\"alert\"><strong>Failed to get search results.</strong></div>";
+			document.getElementById('results').innerHTML = html;
 		}
 			});
 			}
 		} );
   
   //code of validation
-  $( document ).ready( function () {
+$( document ).ready( function () {
 			$( "#travel-form" ).validate( {
 				rules: {
 					keyword: {
 						required: {
 							depends:function(){
-								$(this).val($.trim($(this).val()));
+								if($.trim($(this).val()) == ""){
+									$(this).val($.trim($(this).val()));
+								}
 								return true;
 							}
 						}
@@ -103,7 +132,9 @@ $.validator.setDefaults( {
 					location: {
 						required: {
 							depends:function(){
-								$(this).val($.trim($(this).val()));
+								if($.trim($(this).val()) == ""){
+									$(this).val($.trim($(this).val()));
+								}
 								return true;
 							}
 						}
@@ -121,14 +152,14 @@ $.validator.setDefaults( {
 				},
 				highlight: function ( element, errorClass, validClass ) {
 					if($(element).attr('id') == 'txt_location'){
-						$( element ).parents( ".col-sm-12" ).addClass( "has-error" ).removeClass( "has-success" );
+						$("#div-other").addClass( "has-error" ).removeClass( "has-success" );
 					}else{
 						$( element ).parents( ".col-sm-6" ).addClass( "has-error" ).removeClass( "has-success" );
 					}
 				},
 				unhighlight: function (element, errorClass, validClass) {
 					if($(element).attr('id') == 'txt_location'){
-						$( element ).parents( ".col-sm-12" ).addClass( "has-success" ).removeClass( "has-error" );
+						$("#div-other").addClass( "has-success" ).removeClass( "has-error" );
 					}else{
 						$( element ).parents( ".col-sm-6" ).addClass( "has-success" ).removeClass( "has-error" );
 					}
@@ -136,42 +167,92 @@ $.validator.setDefaults( {
 				} )
 			} );
 			
-function showProgressBar(){
+function showProgressBar(id){
 	var html = "<div class=\"progress\">";
     html += "<div class=\"progress-bar progress-bar-striped active\" role=\"progressbar\" aria-valuenow=\"50\" aria-valuemin=\"0\" aria-valuemax=\"100\" style=\"width:50%; height:16px;\">";
     html += "</div></div>";
-    document.getElementById('results').innerHTML = html;
+    document.getElementById(id).innerHTML = html;
 }
 
 function setTableRows(){
 	$('#tb_results').on('click', '.clickable-row', function(event) {
   $(this).addClass('row-selected').siblings().removeClass('row-selected');
   $('#btn_details').removeAttr("disabled");
+  selectedRow = $(this).index();
+  $('#btn_details').on('click',function(event){
+			getPlaceDetails(placesData.results[selectedRow].place_id);
+  });
 });
+
+$('#tb_favorites').on('click', '.clickable-row', function(event) {
+  $(this).addClass('row-selected').siblings().removeClass('row-selected');
+  $('#btn_details_fav').removeAttr("disabled");
+  selectedRow = $(this).index();
+  $('#btn_details_fav').on('click',function(event){
+			getPlaceDetails(favoritesData[selectedRow].id);
+  });
+});
+
+if(selectedRow != -1){
+	if(resultsTab){
+		$( "#tb_results tr:nth-child("+(selectedRow+1)+")" ).trigger('click');
+	}else{
+		$( "#tb_favorites tr:nth-child("+(selectedRow+1)+")" ).trigger('click');
+	}
+}
+
 $('.table > tbody > tr > td > button').click(function() {
+	var index = $(this).parents( "tr" ).index();
+	
 	if($(this).find('i').hasClass('glyphicon glyphicon-star-empty')){
+		var fav = getFavoriteObject(index);
 		//add result to favorite list
 		$(this).find('i').removeClass('glyphicon glyphicon-star-empty');
 		$(this).find('i').addClass('glyphicon glyphicon-star');
+		favoritesData.push(fav);
+		//add data to local storage
+		localStorage.setItem("favorites", JSON.stringify(favoritesData));
 	}else if($(this).find('i').hasClass('glyphicon glyphicon-star')){
 		//remove result from favorite list
+		var removeIndex = favoritesData.map(function(item) { return item.id; }).indexOf(placesData.results[index].place_id);
+		favoritesData.splice(removeIndex, 1);
 		$(this).find('i').removeClass('glyphicon glyphicon-star');
 		$(this).find('i').addClass('glyphicon glyphicon-star-empty');
+		//add data to local storage
+		localStorage.setItem("favorites", JSON.stringify(favoritesData));
+	}else if($(this).find('i').hasClass('glyphicon glyphicon-trash')){
+		favoritesData.splice(index, 1);
+		$(this).parents( "tr" ).remove();
+		//add data to local storage
+		localStorage.setItem("favorites", JSON.stringify(favoritesData));
+		if(($('#tb_favorites tr').length - 1) == 0){
+			var html = "<div class=\"alert alert-warning text-left\" role=\"alert\"><strong>No records.</strong></div>";
+			document.getElementById('favorites').innerHTML = html;
+		}
 	}else{
-		alert('list button clicked');
+		//get place id and then 
+		//getPlaceDetails(placesData.results[index].place_id);
 	}
 });
+}
 
+function getFavoriteObject(index){
+	var fav = new Object();
+	fav.icon = placesData.results[index].icon;
+	fav.name = placesData.results[index].name;
+	fav.address = placesData.results[index].vicinity;
+	fav.id = placesData.results[index].place_id;
+	return fav;
 }
 
 function goToNextPage(token){
 	//code to go to next page
 	$.ajax({
-        url: 'http://localhost/?pagetoken='+token+"&key=AIzaSyBcrBxlXi_PvW591GLcKs4St2gkJK_V4I0&libraries=places",
+        url: 'http://travelentertainment-env.us-east-2.elasticbeanstalk.com/?pagetoken='+token+"&key=AIzaSyBcrBxlXi_PvW591GLcKs4St2gkJK_V4I0&libraries=places",
         type: 'get',
         dataType: 'json',
 		beforeSend: function() {
-			showProgressBar();
+			showProgressBar('results');
 		},
         success: function(data) {
 				pageNo += 1;
@@ -180,7 +261,8 @@ function goToNextPage(token){
 				showResults();
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
-			alert("Excpetion " + errorThrown + XMLHttpRequest);
+			var html = "<div class=\"alert alert-danger text-left\" role=\"alert\"><strong>Failed to get search results.</strong></div>";
+			document.getElementById('results').innerHTML = html;
 		}
 	});
 }
@@ -191,7 +273,7 @@ function goToPrevPage(){
         type: 'get',
         dataType: 'json',
 		beforeSend: function() {
-			showProgressBar();
+			showProgressBar('results');
 		},
         success: function(data) {
 				pageNo -= 1;
@@ -199,35 +281,475 @@ function goToPrevPage(){
 				showResults();
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
-			alert("Excpetion " + errorThrown + XMLHttpRequest);
+			var html = "<div class=\"alert alert-danger text-left\" role=\"alert\"><strong>Failed to get search results.</strong></div>";
+			document.getElementById('results').innerHTML = html;
 		}
 	});
+}
+
+function getPlaceDetails(placeid){
+	var request = {
+		placeId: placeid
+	};
+
+	service = new google.maps.places.PlacesService(map);
+	service.getDetails(request, function(place,status){
+		if (status == google.maps.places.PlacesServiceStatus.OK) {
+			//alert(JSON.stringify(place));
+			$("#h4_place_name").html(place.name);
+			var table = "<tbody>";
+			if(place.formatted_address != null && place.formatted_address != ""){
+				table += "<tr><td><strong>Address</strong></td><td>"+place.formatted_address+"</td></tr>";
+			}
+			if(place.international_phone_number != null && place.international_phone_number != ""){
+				table += "<tr><td><strong>Phone Number</strong></td><td>"+place.international_phone_number+"</td></tr>";
+			}
+			if(place.price_level != null && place.price_level != ""){
+				var price = '$';
+				if(place.price_level == 2){
+					price = '$$';
+				}else if(place.price_level == 3){
+					price = '$$$';
+				}else if(place.price_level == 4){
+					price = '$$$$';
+				}
+				table += "<tr><td><strong>Price Level</strong></td><td>"+price+"</td></tr>";
+			}
+			if(place.rating != null && place.rating != ""){
+				table += "<tr><td><strong>Rating</strong></td><td>"+place.rating+" <div style=\"display:inline-block;\" id=\"rateYo\" class=\"rateyo\" data-rateyo-read-only=\"true\" data-rateyo-num-stars=\""+Math.ceil(place.rating)+"\" data-rateyo-max-value=\""+Math.ceil(place.rating)+"\" data-rateyo-precision=\"2\" data-rateyo-rating=\""+place.rating+"\" data-rateyo-star-width=\"15px\"></div></td></tr>";
+			}
+			if(place.url != null && place.url != ""){
+				table += "<tr><td><strong>Google Page</strong></td><td><a href=\""+place.url+"\" target=\"_blank\">"+place.url+"</a></td></tr>";
+				tweetURL = place.url;
+			}
+			if(place.website != null && place.website != ""){
+				table += "<tr><td><strong>Website</strong></td><td><a href=\""+place.website+"\" target=\"_blank\">"+place.website+"</a></td></tr>";
+				tweetURL = place.website;
+			}
+			if(place.opening_hours != null){
+				var isOpen = "Closed";
+				//get today's hours
+					//var d = moment.utc().utcOffset(place.utc_offset).toDate();
+					//alert(moment.utc().utcOffset(place.utc_offset).day());
+					var n = moment.utc().utcOffset(place.utc_offset).day();
+					n = n-1;
+					if(n==-1){
+						n=6;
+					}
+				if(place.opening_hours.open_now){					
+					isOpen = "Open now: "+place.opening_hours.weekday_text[n].substr(place.opening_hours.weekday_text[n].indexOf(' ')+1);
+				}
+				table += "<tr><td><strong>Hours</strong></td><td>"+isOpen+"&nbsp;&nbsp;<a style=\"text-decoration:underline;\" href=\"#myModal\" data-toggle=\"modal\" data-target=\"#myModal\" target=\"_blank\">Daily open hours</a>";
+				table += "<div class=\"modal fade\" id=\"myModal\" role=\"dialog\">";
+				table += "<div class=\"modal-dialog\">";
+				table += "<div class=\"modal-content\">";
+				table += "<div class=\"modal-header\">";
+				table += "<button type=\"button\" class=\"close\" data-dismiss=\"modal\">&times;</button>";
+				table += "<h4 class=\"modal-title\">Open Hours</h4>";
+				table += "</div>";
+				table += "<div class=\"modal-body\">";
+				table += "<table class=\"table\">";
+				table += "<tbody>";
+				for(i=0;i<7;i++){
+					n = n%7;
+					if(i==0){
+						table += "<tr>";
+						table += "<td><strong>"+place.opening_hours.weekday_text[n].substr(0,place.opening_hours.weekday_text[n].indexOf(':'))+"</strong></td>";
+						table += "<td><strong>"+place.opening_hours.weekday_text[n].substr(place.opening_hours.weekday_text[n].indexOf(':')+1)+"</strong></td>";
+						table += "</tr>";
+					}else{
+						table += "<tr>";
+						table += "<td>"+place.opening_hours.weekday_text[n].substr(0,place.opening_hours.weekday_text[n].indexOf(':'))+"</td>";
+						table += "<td>"+place.opening_hours.weekday_text[n].substr(place.opening_hours.weekday_text[n].indexOf(':')+1)+"</td>";
+						table += "</tr>";
+					}
+					n = n+1;
+				}
+				table += "</tbody>";
+				table += "</table>";
+				table += "</div>";
+				table += "<div class=\"modal-footer\">";
+				table += "<button type=\"button\" class=\"btn btn-secondary\" data-dismiss=\"modal\">Close</button>";
+				table += "</div>";
+				table += "</div>";
+				table += "</div>";
+				table += "</div></td></tr>";
+			}
+			$("#table_info").html(table);
+			$("div.rateyo").rateYo();
+			setPhotosTab(place);
+			setMapTab(place);
+			setReviewTab(place);
+			
+			tweetParams = "text="+encodeURIComponent("Check out "+place.name+" located at "+place.formatted_address+". Website ")+"&url="+encodeURIComponent(tweetURL)+"&hashtags=TravelAndEntertainmentSearch";
+			$('.btn-twitter').removeAttr('disabled');
+			$('.twitter-share-button').attr('href',"https://twitter.com/intent/tweet?"+tweetParams);
+			checkFavorite(placeid);
+			
+			//add click listener
+			$('#btn_favorite_details').click(function() {
+				if($(this).find('i').hasClass('glyphicon glyphicon-star-empty')){
+					var fav = new Object();
+					fav.name = place.name;
+					fav.id = placeid;
+					fav.icon = place.icon;
+					fav.address = place.formatted_address;
+					//add result to favorite list
+					$(this).find('i').removeClass('glyphicon glyphicon-star-empty');
+					$(this).find('i').addClass('glyphicon glyphicon-star');
+					favoritesData.push(fav);
+					//add data to local storage
+					localStorage.setItem("favorites", JSON.stringify(favoritesData));
+				}else if($(this).find('i').hasClass('glyphicon glyphicon-star')){
+					//remove result from favorite list
+					var removeIndex = favoritesData.map(function(item) { return item.id; }).indexOf(placeid);
+					favoritesData.splice(removeIndex, 1);
+					$(this).find('i').removeClass('glyphicon glyphicon-star');
+					$(this).find('i').addClass('glyphicon glyphicon-star-empty');
+					//add data to local storage
+					localStorage.setItem("favorites", JSON.stringify(favoritesData));
+				}
+			});
+
+			
+		}
+		
+	});
+
+}
+function checkFavorite(placeid){
+	if (localStorage.getItem("favorites") !== null) {
+		data = JSON.parse(localStorage.getItem("favorites"));
+		for(i=0;i<data.length;i++){
+			var fav = data[i];
+			if(fav.id == placeid){
+				$('#ic_star').removeClass('glyphicon glyphicon-star-empty').addClass('glyphicon glyphicon-star');
+				break;
+			}
+		}
+	}
+}
+
+Number.prototype.padLeft = function(base,chr){
+   var  len = (String(base || 10).length - String(this).length)+1;
+   return len > 0? new Array(len).join(chr || '0')+this : this;
+}
+
+function setReviewTab(place){
+	//alert(JSON.stringify(place));
+	parseGoogleReviews(place.reviews);
+	googleReviewsData = place.reviews;
+	var address1= place.formatted_address;
+	for(i=0;i<place.address_components.length;i++){
+		if(place.address_components[i].types[0] == "administrative_area_level_1"){
+			state = place.address_components[i].short_name;
+		}else if(place.address_components[i].types[0] == "locality"){
+			city = place.address_components[i].short_name;
+		}else if(place.address_components[i].types[0] == "country"){
+			country = place.address_components[i].short_name;
+		}else if(place.address_components[i].types[0] == "postal_code"){
+			postal_code = place.address_components[i].short_name;
+		}
+	}
+	yelpParams = "&name="+place.name+"&city="+city+"&state="+state+"&country="+country+"&postal_code="+postal_code+"&latitude="+place.geometry.location.lat()+"&longitude="+place.geometry.location.lng()+"&address1="+address1;
+}
+
+function loadYelpReviews(){
+	$.ajax({
+        url: 'http://travelentertainment-env.us-east-2.elasticbeanstalk.com/?yelp=true'+yelpParams,
+        type: 'get',
+        dataType: 'json',
+		beforeSend: function() {
+			showProgressBar('review_result');
+		},
+        success: function(data) {
+				//data = JSON.parse(data);
+				parseYelpReviews(data.reviews);
+		},
+		error: function(XMLHttpRequest, textStatus, errorThrown) {
+			var html = "<div class=\"alert alert-danger text-left\" role=\"alert\"><strong>Failed to get reviews.</strong></div>";
+			document.getElementById('review_result').innerHTML = html;
+		}
+	});
+}
+
+function parseYelpReviews(reviews){
+	reviewsData = [];
+	for(i=0;i<reviews.length;i++){
+		var review = new Object();
+		review.authName = reviews[i].user.name;
+		review.authURL = reviews[i].url;
+		review.proPicURL = reviews[i].user.image_url;
+		review.rating = reviews[i].rating;
+		review.text = reviews[i].text;
+		review.time = reviews[i].time_created;
+		reviewsData[i] = review;
+	}
+	loadReviews();
+}
+
+function parseGoogleReviews(reviews){
+	reviewsData = [];
+	if(reviews != null){
+		//no reviews found message
+		for(i=0;i<reviews.length;i++){
+			var review = new Object();
+			review.authName = reviews[i].author_name;
+			review.authURL = reviews[i].author_url;
+			review.proPicURL = reviews[i].profile_photo_url;
+			review.rating = reviews[i].rating;
+			review.text = reviews[i].text;
+			var date = new Date(reviews[i].time*1000);
+			review.time = date.getFullYear()+"-"+(date.getMonth()+1).padLeft()+"-"+date.getDate().padLeft()+" "+date.getHours().padLeft()+":"+date.getMinutes().padLeft()+":"+date.getSeconds().padLeft();
+			reviewsData[i] = review;
+		}
+	}
+	loadReviews();
+}
+
+function loadReviews(){
+    var text = $('#btn_order').html();
+	if(text.startsWith("Default Order")){
+		setReviewsData(null);
+	}else if(text.startsWith("Highest Rating")){
+		sortReviews('rating','des');
+	}else if(text.startsWith("Lowest Rating")){
+		sortReviews('rating','asc');
+	}else if(text.startsWith("Most Recent")){
+		sortReviews('time','des');
+	}else{
+		sortReviews('time','asc');
+	}
+}
+
+function sortReviews(type,order){
+	var array = reviewsData.slice();
+	if(type == "rating"){
+		if(order == 'asc'){
+			array.sort(function(a,b) {
+				return a.rating - b.rating;
+			});
+		}else{
+			array.sort(function(a,b) {
+				return b.rating - a.rating;
+			});
+		}
+	}else{
+		if(order == 'asc'){
+			array.sort(function(a,b) {
+				return a.time < b.time ? -1 : a.time > b.time ? 1 : 0;
+			});
+		}else{
+			array.sort(function(a,b) {
+				return b.time < a.time ? -1 : b.time > a.time ? 1 : 0;
+			});
+		}
+	}
+	setReviewsData(array);
+}
+
+function setReviewsData(data){
+	if(data == null){
+		data = reviewsData;
+	}
+		var html = "";
+		
+		if(data.length == 0){
+			//no reviews found message
+			html = "<div class=\"alert alert-warning text-left\" role=\"alert\"><strong>No records.</strong></div>";
+			$("#review_result").html(html);
+		}else{
+			for(i=0;i<data.length;i++){
+				var review = data[i];
+				html += "<div class=\"review-box\">";
+				html += "<div class=\"col-xs-2 col-lg-1 col-sm-1 nopadding\"><a target=\"_blank\" href=\""+review.authURL+"\"><img src=\""+review.proPicURL+"\" style=\"height:50px; width:50px; border-radius: 50%;\"/></a></div>";
+				html += "<div class=\"col-xs-10 col-lg-11 col-sm-11 pull-left text-left\" style=\"padding:0 0 0 10px;\">";
+				html += "<a target=\"_blank\" href=\""+review.authURL+"\" style=\"text-decoration:none;\"><p class=\"text-primary\">"+review.authName+"</p></a>";
+				html += "<div style=\"display:inline-block;\" class=\"rateyo\" data-rateyo-read-only=\"true\" data-rateyo-num-stars=\""+Math.ceil(review.rating)+"\" data-rateyo-max-value=\""+Math.ceil(review.rating)+"\" data-rateyo-precision=\"2\" data-rateyo-rating=\""+review.rating+"\" data-rateyo-star-width=\"15px\"></div>"+" "+"<span class=\"grey-text\">"+review.time+"</span>";
+				html += "<p>"+review.text+"</p>";
+				html += "</div></div>";
+				
+			}
+			$("#review_result").html(html);
+			$("div.rateyo").rateYo();
+		}
+}
+
+function setMapTab(place){
+	$('#txt_to').val(place.formatted_address)
+	var defaultBounds = new google.maps.LatLngBounds(
+	new google.maps.LatLng(-33.8902, 151.1759),
+	new google.maps.LatLng(-33.8474, 151.2631));
+
+	var input = document.getElementById('txt_from');
+	var options = {
+		bounds: defaultBounds,
+		types: ['establishment']
+	};
+
+	autocomplete = new google.maps.places.Autocomplete(input, options);
+	google.maps.event.addListener(autocomplete, 'place_changed', function () {
+            var place = autocomplete.getPlace();
+			start = new google.maps.LatLng(place.geometry.location.lat(),place.geometry.location.lng());
+        });
+	
+	if($("#rbt_clocation").is(":checked")){
+		$('#txt_from').val('Your location');
+	}else{
+		$('#txt_from').val($('#txt_location').val());
+	}
+	mapLat = place.geometry.location.lat();
+	mapLng = place.geometry.location.lng();
+	initMap();
+}
+
+function initMap() {
+        directionsService = new google.maps.DirectionsService();
+		directionsDisplay = new google.maps.DirectionsRenderer();
+		var mapCenter = new google.maps.LatLng(mapLat, mapLng);
+		var mapOptions = {
+			zoom:16,
+			center: mapCenter
+		}
+		map = new google.maps.Map(document.getElementById('gmap'), mapOptions);
+		directionsDisplay.setMap(map);
+		directionsDisplay.setPanel(document.getElementById('directionsPanel'));
+		
+		var marker = new google.maps.Marker({
+          position: mapCenter,
+          map: map
+        });
+}
+
+function changeMapType(button){
+	if(mapToggle){
+		var panorama = new google.maps.StreetViewPanorama(
+		document.getElementById('gmap'), {
+		  position: {lat: mapLat, lng: mapLng},
+		  motionTracking: false,
+		  motionTrackingControl: false,
+		  linksControl: true, panControl: false, enableCloseButton: false
+		});
+		button.style.backgroundImage = 'url(http://cs-server.usc.edu:45678/hw/hw8/images/Map.png)';
+		mapToggle = false;
+	}else{
+		initMap();
+		button.style.backgroundImage = "url(http://cs-server.usc.edu:45678/hw/hw8/images/Pegman.png)";
+		mapToggle = true;
+	}
+}
+
+function calcRoute() {
+	if($("#txt_from").val().toUpperCase() == "MY LOCATION" || $("#txt_from").val().toUpperCase() == "YOUR LOCATION"){
+		start = new google.maps.LatLng(lattitude,longitude);
+		showDirection();
+	}else{
+		var place = autocomplete.getPlace();
+		if(place == null){
+			//alert($('#txt_from').val());
+			 var request = {
+				location: new google.maps.LatLng(mapLat,mapLng),
+				query: $('#txt_from').val()
+			};
+			var service = new google.maps.places.PlacesService(map);
+			service.textSearch(request, callbackFromGeoCode);
+		}else{
+			start = new google.maps.LatLng(place.geometry.location.lat(),place.geometry.location.lng());
+			showDirection();
+		}
+	}
+}
+
+function callbackFromGeoCode(results, status){
+	if (status == google.maps.places.PlacesServiceStatus.OK) {
+     start = new google.maps.LatLng(results[0].geometry.location.lat(),results[0].geometry.location.lng());
+	 showDirection();
+	}
+
+}
+
+function showDirection(){
+	end = new google.maps.LatLng(mapLat,mapLng);
+	var e = document.getElementById("sel_mode");
+	var mode = e.options[e.selectedIndex].value;
+  var request = {
+    origin:start,
+    destination:end,
+    travelMode: mode,
+	provideRouteAlternatives: true
+  };
+  directionsService.route(request, function(response, status) {
+    if (status == 'OK') {
+      directionsDisplay.setDirections(response);
+    }
+  });
+}
+
+function setPhotosTab(place){
+	if(place.photos == null || place.photos.length==0){
+		var html = "<div class=\"alert alert-warning text-left\" role=\"alert\"><strong>No records.</strong></div>";
+		$("#photos").html(html);
+	}else{
+	var html = "<br/><div class=\"row\">";
+	var col1 = "<div class=\"column\">";
+	var col2 = "<div class=\"column\">";
+	var col3 = "<div class=\"column\">";
+	var col4 = "<div class=\"column\">";
+    for(i=0;i<place.photos.length;i++){
+		var photoURL = place.photos[i].getUrl({'maxWidth': place.photos[i].width, 'maxHeight': place.photos[i].height});
+		var innerhtml = "<div class=\"thumbnail\" style=\"padding:0; margin:4px;\">";
+        innerhtml += "<a href=\""+photoURL+"\" target=\"_blank\">";
+        innerhtml += "<img class=\"img-responsive\" src=\""+photoURL+"\" style=\"width:100%\">";
+        innerhtml += "</a>";
+		innerhtml += "</div>";
+		if(i%4 == 0){
+			col1 += innerhtml;
+		}else if(i%4==1){
+			col2 += innerhtml;
+		}else if(i%4 == 2){
+			col3 += innerhtml;
+		}else{
+			col4 += innerhtml;
+		}
+	}
+	html += col1 + "</div>";
+	html += col2 + "</div>";
+	html += col3 + "</div>";
+	html += col4 + "</div>";
+	html +="</div>";
+	$("#photos").html(html);
+	}
 }
 			
 function showResults(){
 	if(placesData != ""){
-		//var json = JSON.parse(placesData);
 		var json = placesData;
 		if(json.results.length==0){
 			var html = "<div class=\"alert alert-warning text-left\" role=\"alert\"><strong>No records.</strong></div>";
 			document.getElementById('results').innerHTML = html;
 		}else{
-			var html = " <div class=\"text-right\"><button class=\"btn btn-default right-align\" id=\"btn_details\" disabled>Details <span class=\"glyphicon glyphicon-chevron-right\"></span></button></div>";
+			//alert(json.results[selectedRow].placeid);
+			var html = " <div class=\"text-right\"><button class=\"btn btn-default right-align\" id=\"btn_details\" ng-click=\"showDetails('backward')\" disabled>Details <span class=\"glyphicon glyphicon-chevron-right\"></span></button></div><br/>";
 			html += "<div class=\"table-responsive\"><table class=\"table table-hover\" id=\"tb_results\"><thead><tr><th>#</th><th>Category</th><th>Name</th><th>Address</th><th>Favorite</th><th>Details</th></tr></thead>";
 			html += "<tbody>";
 			for(i=0;i<json.results.length;i++){
 				var result = json.results[i];
 				html += "<tr class=\"clickable-row\">";
 				html += "<td>"+(i+1)+"</td>";
-				html += "<td><img src=\""+result.icon+"\" style=\"widhth:35px; height:35px;\"/></td>";
+				html += "<td><img src=\""+result.icon+"\" style=\"width:35px; height:35px;\"/></td>";
 				html += "<td>"+result.name+"</td>";
-				html += "<td>9"+result.vicinity+"</td>";
-				html += "<td><button type=\"button\" class=\"btn btn-default\" id=\"btn_favorite\"><i class=\"glyphicon glyphicon-star-empty\"></i></button></td>";
-				html += "<td><button type=\"button\" class=\"btn btn-default\"><i class=\"glyphicon glyphicon-chevron-right\"></i></button></td>";
+				html += "<td>"+result.vicinity+"</td>";
+				var index = favoritesData.map(function(item) { return item.id; }).indexOf(result.place_id);
+				if(index == -1){
+					html += "<td><button type=\"button\" class=\"btn btn-default\" id=\"btn_favorite\"><i class=\"glyphicon glyphicon-star-empty\"></i></button></td>";
+				}else{
+					html += "<td><button type=\"button\" class=\"btn btn-default\" id=\"btn_favorite\"><i class=\"glyphicon glyphicon-star\"></i></button></td>";
+				}
+				html += "<td><button type=\"button\" class=\"btn btn-default\" ng-click=\"showDetails('backward')\" onclick=\"getPlaceDetails('"+result.place_id+"')\"><i class=\"glyphicon glyphicon-chevron-right\"></i></button></td>";
 				html += "</tr>";
 				//html += "<tr><td><img src=\""+result.icon+"\" style=\"width:35px; height:35px;\"/></td><td><button class=\"placename\"onClick=\"getReviewsData(\'"+result.place_id+"\')\">"+result.name+"</button></td><td><button class=\"placeadd\"onClick=\"buildMap("+result.geometry.location.lat+","+result.geometry.location.lng+",this)\">"+result.vicinity+"</button></td></tr>";
 			}
-			html += "</tbody></table>";
+			html += "</tbody></table></div>";
 			//check for next page token
 			if(pageNo == 0){
 				if(json.hasOwnProperty("next_page_token")){
@@ -242,8 +764,66 @@ function showResults(){
 			}
 			document.getElementById('results').innerHTML = html;
 			setTableRows();
+			$("#results").each(function () {
+				var content = $(this);
+				angular.element(document).injector().invoke(function($compile) {
+					var scope = angular.element(content).scope();
+					$compile(content)(scope);
+				});
+			});
 		}
 	}
+}
+
+function showFavorites(start,end){
+		if (localStorage.getItem("favorites") !== null) {
+			favoritesData = JSON.parse(localStorage.getItem("favorites"));
+		}
+		
+		if(favoritesData.length==0){
+			var html = "<div class=\"alert alert-warning text-left\" role=\"alert\"><strong>No records.</strong></div>";
+			document.getElementById('favorites').innerHTML = html;
+		}else{
+			var html = " <div class=\"text-right\"><button class=\"btn btn-default right-align\" id=\"btn_details_fav\" ng-click=\"showDetails('backward')\" disabled>Details <span class=\"glyphicon glyphicon-chevron-right\"></span></button></div>";
+			html += "<div class=\"table-responsive\"><table class=\"table table-hover\" id=\"tb_favorites\"><thead><tr><th>#</th><th>Category</th><th>Name</th><th>Address</th><th>Favorite</th><th>Details</th></tr></thead>";
+			html += "<tbody>";
+			for(i=start;i<end;i++){
+				if(i>=favoritesData.length){
+					break;
+				}
+				var result = favoritesData[i];
+				html += "<tr class=\"clickable-row\">";
+				html += "<td>"+(i+1)+"</td>";
+				html += "<td><img src=\""+result.icon+"\" style=\"width:35px; height:35px;\"/></td>";
+				html += "<td>"+result.name+"</td>";
+				html += "<td>"+result.address+"</td>";
+				html += "<td><button type=\"button\" class=\"btn btn-default\" id=\"btn_favorite\"><i class=\"glyphicon glyphicon-trash\"></i></button></td>";
+				html += "<td><button type=\"button\" class=\"btn btn-default\" ng-click=\"showDetails('backward')\" onclick=\"getPlaceDetails('"+result.id+"')\"><i class=\"glyphicon glyphicon-chevron-right\"></i></button></td>";
+				html += "</tr>";
+			}
+			html += "</tbody></table></div>";
+			//check for next page
+			if(start == 0){
+				if(favoritesData.length>20){
+					html += "<div><button type=\"button\" class=\"btn btn-default btn-pagination\" id=\"btn_next\" onClick=\"showFavorites("+end+","+(end+20)+")\">Next</button></div>";
+				}
+			}else{
+				if(end>=favoritesData.length){
+					html += "<div><button type=\"button\" class=\"btn btn-default btn-pagination\" onClick=\"showFavorites("+(start-20)+","+start+")\">Previous</button></div>";
+				}else{
+					html += "<div><button type=\"button\" class=\"btn btn-default btn-pagination\" onClick=\"showFavorites("+(start-20)+","+start+")\">Previous</button><button type=\"button\" class=\"btn btn-default btn-pagination\" id=\"btn_next\" onClick=\"showFavorites("+end+","+(end+20)+")\">Next</button></div>";
+				}
+			}
+			document.getElementById('favorites').innerHTML = html;
+			setTableRows();
+			$("#favorites").each(function () {
+				var content = $(this);
+				angular.element(document).injector().invoke(function($compile) {
+					var scope = angular.element(content).scope();
+					$compile(content)(scope);
+				});
+			});
+		}
 }
 
 //set autocomplete for location text box
@@ -258,27 +838,70 @@ var options = {
   types: ['establishment']
 };
 
-autocomplete = new google.maps.places.Autocomplete(input, options);
+autocomplete = new google.maps.places.Autocomplete(input);
+
+//initialize map
+var loc = {lat: -lattitude, lng: longitude};
+  map = new google.maps.Map(document.getElementById('temp'), {
+    center: loc,
+    zoom: 17
+  });
 }
 
-//submit form
-$(document).ready(function () {
-            
-        });
+function setFavoritesData(){
+	if (localStorage.getItem("favorites") !== null) {
+		favoritesData = JSON.parse(localStorage.getItem("favorites"));
+	}
+}
+
+$.fn.stars = function() {
+    return $(this).each(function() {
+        $(this).html($('<span />').width(Math.max(0, (Math.min(5, parseFloat($(this).html())))) * 16));
+    });
+}
+
+function checkField(text){
+	if(text.value.trim() != ""){
+		$("#btn_get_dir").removeAttr("disabled");
+	}else{
+		$("#btn_get_dir").attr("disabled",true);
+	}
+}
+
+function clearDetails(){
+	$('#txt_keyword').val('');
+	$('#txt_distance').val('');
+	$('#txt_location').val('');
+	$('#rbt_clocation').prop('checked','checked');
+	$('#rbt_olocation').prop('checked',false);
+	$('#txt_location').attr('disabled',true);
+	$("#sel_category").prop('selectedIndex', 0);
+	$('a[href="#results"]').tab('show');
+	$('.details').html('');
+	var scope = angular.element(document.getElementById("mainBody")).scope();
+    scope.view = "search";
+	scope.$apply();
+	$('#results').html("");
+	selectedRow = -1;
+	$('#div-other').removeClass('has-error');
+	$('#div_keyword').removeClass('has-error');
+	$('.help-block').remove();
+	placesData = "";
+}
   </script>
 </head>
-<body>
+<body ng-controller="AppController" id="mainBody">
 <div class="container" style="margin:16px auto;">
-<div class="col-sm-10 col-centered">
-  <div class="panel panel-default">
+<div class="col-sm-12 col-lg-10 col-centered nopadding">
+  <div class="panel panel-default" style="width:100%; margin:auto 0;">
     <div class="panel-heading"><b><h4>Travel and Entertainment Search</h4></b>
 		<form data-toggle="validator" role="form" class="form-horizontal form-groups-bordered col-centered" id="travel-form" method="get" action=""> 
 			<div class="form-group"> 
-				<label for="txt_keyword" class="col-sm-3 control-label text-left">Keyword<span style="color:red">*</span></label> 
-				<div class="col-sm-6 text-left"> <input type="text" class="form-control form-control-sm" id="txt_keyword" placeholder="" name="keyword"> </div> 
+				<label for="txt_keyword" class="col-sm-3 control-label text-left pull-left">Keyword<span style="color:red">*</span></label> 
+				<div class="col-sm-6 text-left" id="div_keyword"> <input type="text" class="form-control form-control-sm" id="txt_keyword" placeholder="" name="keyword"> </div> 
 			</div>
 			<div class="form-group">
-				<label for="sel_category" class="col-sm-3 control-label text-left">Category</label>
+				<label for="sel_category" class="col-sm-3 control-label text-left pull-left">Category</label>
 				<div class="col-sm-4 control-label">
 					<select class="form-control" id="sel_category" name="category">
 						<option>Default</option>
@@ -314,51 +937,238 @@ $(document).ready(function () {
 					</div>
 				</div>
 				<div class="form-group"> 
-					<label for="txt_distance" class="col-sm-3 control-label text-left">Distance (miles)</label> 
+					<label for="txt_distance" class="col-sm-3 control-label text-left pull-left">Distance (miles)</label> 
 					<div class="col-sm-4"> <input type="text" class="form-control" id="txt_distance" placeholder="10" name="distance"> </div> 
 				</div>
 				<div class="form-group">
-					<label for="txt_distance" class="col-sm-3 control-label text-left">From<span style="color:red">*</span></label> 
-					<div class="col-sm-6" style="float:left; text-align:left;">
+					<label for="txt_distance" class="col-sm-3 col-xs-12 control-label text-left pull-left">From<span style="color:red">*</span></label> 
+					<div class="col-sm-6 col-xs-12" style="float:left; text-align:left;">
 					 <div class="radio">
 						<label><input type="radio" name="rbt_location" id="rbt_clocation" checked>Current location</label>
 					</div>
 					<div class="radio">
 						<label><input type="radio" name="rbt_location" id="rbt_olocation">Other. Please specify:</label>
 					</div>
-					<div class="col-sm-12"><input type="text" class="form-control" id="txt_location" name="location" placeholder="Enter a location" disabled></div>
+					<div class="col-sm-12 nopadding" id="div-other"><input type="text" class="form-control" id="txt_location" name="location" placeholder="Enter a location" disabled></div>
 					</div>
 				</div>
 				<div class="form-group" style="text-align:left;">
 				<div class="col-sm-9">
 				<button type="submit" class="btn btn-info" disabled id="btn_search" name="search"><span class="glyphicon glyphicon-search"></span> Search</button>
-				<button type="button" class="btn btn-default">Clear</button>
+				<button type="button" class="btn btn-default" onclick="clearDetails()">Clear</button>
 				</div></div>
-    </button>
 	</form>	
 	</div>
   </div>
  </div>
- <div class="col-sm-10 col-centered" style="margin:0 auto; text-align:center;">
- <div class="center-block">
+ <div class="col-centered col-sm-12 col-lg-10 nopadding" style="margin:8px auto; text-align:center;">
  <ul class="nav nav-pills center-pills">
-  <li class="active"><a data-toggle="pill" href="#results">Results</a></li>
-  <li><a data-toggle="pill" href="#favorites">Favorites</a></li>
-</ul><br/><br/>
-
-<div class="tab-content">
+  <li class="active" id="li_resutls"><a data-toggle="pill" href="#results" id="tab_results">Results</a></li>
+  <li id="li_favorites"><a data-toggle="pill" href="#favorites" id="tab_favorites">Favorites</a></li>
+</ul><br/>
+ <div class="viewport {{orientation}}" ng-switch="view" id="div_switch">
+ 
+ <div ng-switch-when="search" class="view search">
+ 
+  <div class="fixed-body">
+  <div class="tab-content">
   <div id="results" class="tab-pane fade in active">
-  </div>
-    <script>showResults();</script>
+  <script>showResults();</script>
   </div>
   <div id="favorites" class="tab-pane fade">
-    <h3>Favorites Here</h3>
-    <p>Some content.</p>
+  <script>showFavorites(0,20);</script>
   </div>
+  <script>
+  //set tab
+  if(!resultsTab){
+	$("#results").removeClass("in active");
+	$("#favorites").addClass("in active");
+	$('a[href="#tab_favorites"]').trigger('click');
+	showFavorites(0,20);
+	selectedRow = -1;
+  }
+  </script>
+	</div>
+	</div>
+ 
+	</div>
+  
+  <!-- End of search div-->
+  <div ng-switch-when="details" class="view details">
+  <div class="fixed-body">
+                <div class="col-sm-12 nopadding">
+					<h4 id="h4_place_name"></h4>
+					<div class="col-sm-12 nopadding">
+					<div class='btn-toolbar pull-right'>
+						<div>
+							<button type=="button" class="btn btn-default" id="btn_favorite_details"><i id="ic_star" class="glyphicon glyphicon-star-empty"></i></button>
+							<a class="twitter-share-button" href=""><button class="btn btn-default btn-twitter" style="width:34px; height:34px; margin-left:8px;" disabled></button></a>
+						</div>
+					</div>
+					<button class="btn btn-default pull-left" id="btn_list" ng-click="showSearches('forward')"><span class="glyphicon glyphicon-chevron-left"> List</span></button>
+					</div><br/><br/>
+	<div class="col-sm-12 nopadding">
+					<ul class="nav nav-tabs">
+	<li class="pull-right"><a data-toggle="tab" href="#reviews">Reviews</a></li>
+	<li class="pull-right"><a data-toggle="tab" href="#map">Map</a></li>
+	<li class="pull-right"><a data-toggle="tab" href="#photos">Photos</a></li>
+    <li class="active pull-right"><a data-toggle="tab" href="#info">Info</a></li>
+    
+  </ul>
+
+  <div class="col-sm-12 tab-content nopadding">
+    <div id="info" class="tab-pane fade in active">
+      <br/><div class="table-responsive"><table class="table table-striped" id="table_info">
+    <tbody>
+      <tr>
+        <td><strong>Phone Number</strong></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Price Level</strong></td>
+        <td></td>
+      </tr>
+	  <tr>
+        <td><strong>Rating</strong></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Google Page</strong></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Website</strong></td>
+        <td></td>
+      </tr>
+	  <tr>
+        <td><strong>Hours</strong></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+    </div>
+    <div id="photos" class="tab-pane fade">
+    </div>
+    <div id="map" class="tab-pane fade">
+		<form data-toggle="validator" role="form" class="form-horizontal form-groups-bordered col-centered" id="travel-form" method="get" action=""> 
+			<div class="col-sm-4" style="padding:4px 8px 0 0;">
+			<!--<div class="form-group"> -->
+				<label for="txt_from" class="control-label text-left pull-left">From</label>
+				<div class="text-left"> <input type="text" class="form-control form-control-sm" id="txt_from" placeholder="" name="from" onchange="checkField(this)" required> </div> 
+			<!--</div>-->
+			</div>
+			<div class="col-sm-4" style="padding:4px 8px 0 0;">
+			<!--<div class="form-group"> -->
+				<label for="txt_to" class="control-label text-left pull-left">To</label>
+				<div class="text-left"> <input type="text" class="form-control form-control-sm" id="txt_to" placeholder="" name="to" readonly> </div> 
+			<!--</div>-->
+			</div>
+			<div class="col-sm-2" style="padding:4px 8px 0 0;">
+				<!--<div class="form-group"> -->
+				<label for="txt_keyword" class="control-label text-left pull-left">Travel Mode</label> 
+					<select class="form-control" id="sel_mode" name="category">
+						<option value="DRIVING">Driving</option>
+						<option value="BICYCLING">Bicycling</option>
+						<option value="TRANSIT">Transit</option>
+						<option value="WALKING">Walking</option>
+					</select>
+			<!--</div>-->
+			</div>
+			<div class="col-sm-2" style="padding:4px 0 0 0;">
+					<label for="txt_keyword" class="control-label text-left pull-left hidden-xs hidden-sm" style="color:white;">Button</label> 
+					<div class="text-left"><button type="button" class="btn btn-primary form-control form-control-sm" id="btn_get_dir" onclick="calcRoute()" style="width:150px;">Get Directions</button></div>
+			</div>
+		</form>
+		<div class="col-sm-12 nopadding" style="margin-top:4px;"><button class="btn btn-default pull-left btn-map pull-left" style="width:34px; height:34px;" onclick="changeMapType(this)"></button></div>
+		<div id="gmap" class="col-sm-12 nopadding" style="height:300px; width:100%; margin:8px 0;"></div>
+		<div id="directionsPanel"></div>
+
+    </div>
+    <div id="reviews" class="tab-pane fade">
+	<div class="col-sm-12 nopadding" style="margin-top:8px; padding:4px; min-height:200px;">
+	<div class="col-sm-12">
+      <div class="row">
+		<div class="dropdown">
+    <button class="btn dropdown-toggle" type="button" data-toggle="dropdown" id="btn_review_type">Google Reviews
+    <span class="caret"></span></button>
+    <ul class="dropdown-menu" id="dd_review_type">
+      <li><a href="#" ng-click="save()">Google Reviews</a></li>
+      <li><a href="#" ng-click="save()">Yelp Reviews</a></li>
+    </ul>
+  </div>
+  <div class="dropdown" style="margin-left:16px;">
+    <button class="btn dropdown-toggle" type="button" data-toggle="dropdown" id="btn_order">Default Order
+    <span class="caret"></span></button>
+    <ul class="dropdown-menu" id="dd_order">
+      <li><a href="">Default Order</a></li>
+      <li><a href="">Highest Rating</a></li>
+      <li><a href="">Lowest Rating</a></li>
+	  <li><a href="">Most Recent</a></li>
+	  <li><a href="">Least Recent</a></li>
+    </ul>
+  </div>
+  </div>
+  </div>
+  <script>
+  $('#dd_order').on( 'click', 'a', function() {
+    var text = $(this).html();
+    var htmlText = text + ' <span class="caret"></span>';
+    $(this).closest('.dropdown').find('.dropdown-toggle').html(htmlText);
+	if(text == "Default Order"){
+		setReviewsData(null);
+	}else if( text == "Highest Rating"){
+		sortReviews('rating','des');
+	}else if(text == "Lowest Rating"){
+		sortReviews('rating','asc');
+	}else if(text == "Most Recent"){
+		sortReviews('time','des');
+	}else{
+		sortReviews('time','asc');
+	}
+});
+
+  $('#dd_review_type').on( 'click', 'a', function() {
+    var text = $(this).html();
+    var htmlText = text + ' <span class="caret"></span>';
+    $(this).closest('.dropdown').find('.dropdown-toggle').html(htmlText);
+	if(text == "Google Reviews"){
+		setTimeout(function(){parseGoogleReviews(googleReviewsData); }, 200);
+	}else{
+		setTimeout(function(){ loadYelpReviews(); }, 200);
+	}
+});
+  </script>
+  <div class="col-sm-12 message fadein fadeout nopadding" ng-show="showMessage" id="review_result" style="margin:8px 0;">
+	
+    </div>
+  </div>
+  </div>
+  </div>
+                </div>
+    </div>
+  
+  </div>
+  </div> 
+  </div>
+  <div id="temp" width="10" height="10" style="display:none;"></div>
 </div>
-  </div>
-  </div>
-</div>
+<script>
+$("#tab_results").on("click", function(){
+	document.body.style.overflow = "auto"
+	resultsTab = true;
+	selectedRow = -1;
+	showResults();
+});
+$("#tab_favorites").on("click", function(){
+	document.body.style.overflow = "auto"
+	resultsTab = false;
+	selectedRow = -1;
+	showFavorites(0,20);
+	
+});
+</script>
 <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcrBxlXi_PvW591GLcKs4St2gkJK_V4I0&libraries=places&callback=setAutoComplete" async defer></script>
+
 </body>
 </html>
